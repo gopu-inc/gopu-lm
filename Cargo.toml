@@ -1,0 +1,21 @@
+[package]
+name = "gopu"
+version = "0.1.0"
+edition = "2021"
+description = "gopu.inc : orchestrateur de sous-agents, graphe de session, entrainement leger, safetensors/.b8n (Rust, std uniquement)"
+
+[lib]
+name = "gopu"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "gopu-demo"
+path = "src/main.rs"
+
+[dependencies]
+# Aucune dependance externe : std uniquement.
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

@@ -44,6 +44,8 @@ def _L():
         "gopu_string_free": (None, [p]),
         "gopu_lm_load": (p, [c]), "gopu_lm_free": (None, [p]), "gopu_lm_save": (ctypes.c_int, [p, c]),
         "gopu_lm_new": (p, [c, c]), "gopu_lm_train": (p, [p, c, c]),
+        "gopu_lm_lora_train": (p, [p, c, c]), "gopu_lm_lora_save": (ctypes.c_int, [p, c]),
+        "gopu_lm_lora_load": (ctypes.c_int, [p, c]),
         "gopu_lm_generate": (p, [p, c, c]), "gopu_lm_future": (p, [p, c, sz]),
         "gopu_lm_encode": (p, [p, c]), "gopu_lm_decode": (p, [p, c]),
         "gopu_lm_embed": (p, [p, c, c]), "gopu_lm_info": (p, [p]),
@@ -225,6 +227,31 @@ class Model:
             with open(data, encoding="utf-8") as f:
                 data = f.read()
         return json.loads(_take(self._L.gopu_lm_train(self._h, _b(data), _b(json.dumps(opts)))))
+
+    def train_lora(self, data, *, rank=8, alpha=None, **opts):
+        """Adapte uniquement une petite tete LoRA de sortie.
+
+        Le Transformer charge reste gele. `rank` determine la taille de l'adaptateur ;
+        `alpha` vaut `rank` par defaut. Les autres options sont celles de :meth:`train`.
+        """
+        if os.path.exists(data):
+            with open(data, encoding="utf-8") as f:
+                data = f.read()
+        opts = dict(opts)
+        opts["rank"] = int(rank)
+        opts["alpha"] = float(rank if alpha is None else alpha)
+        return json.loads(_take(self._L.gopu_lm_lora_train(self._h, _b(data), _b(json.dumps(opts)))))
+
+    def save_lora(self, path):
+        """Enregistre l'adaptateur LoRA actif dans un fichier `.b8n` ou `.safetensors`."""
+        if self._L.gopu_lm_lora_save(self._h, _b(os.fspath(path))) != 0:
+            _take(None)
+
+    def load_lora(self, path):
+        """Charge un adaptateur LoRA correspondant à l'architecture du modèle."""
+        if self._L.gopu_lm_lora_load(self._h, _b(os.fspath(path))) != 0:
+            _take(None)
+        return self
 
     # -- tokenizer / embeddings / futur
     def tokenize(self, text):

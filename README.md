@@ -85,17 +85,36 @@ python3 train.py                                   # reprend modele.b8n (sinon e
 python3 train.py --fresh                           # repart de zéro (nouveau tokenizer, nouveaux poids)
 python3 train.py --epochs 5 --batch 8 --max-minutes 30
 python3 train.py --data-dir mes_donnees --model autre.b8n --out sortie.b8n
+python3 train.py --fresh --data-dir data/improved --model modele_ameliore.b8n --pack-len 256
 ```
 
 - **Données** : tous les fichiers `data/*.txt`, au format de la section 3. `python3 tools/gen_data.py --n 6000 --out data/train.txt` fabrique un corpus d'essai (salutations, calculs avec outils, heure, capitales, code, dialogues à plusieurs tours). Remplace-le par tes propres conversations pour changer le comportement du modèle.
+- Pour enrichir le corpus existant sans le remplacer : `python3 tools/expand_data.py --repeat 3 --seed 23`. Cette commande ajoute trois formulations tirées au sort pour chacun de 98 thèmes (Rust, Python, informatique, sciences, géographie, français, mathématiques et réponses prudentes). Elle ajoute 294 conversations ; `--repeat` contrôle le nombre d'exemples par thème.
 - **Contexte : 7 024 jetons** (`CONTEXT_TOKENS`, option `--context`). Si le modèle repris avait un contexte plus court, sa table de positions est étendue (les positions existantes sont conservées).
 - **Plafond : 1 000 000 de jetons** (`MAX_TRAIN_TOKENS`, option `--max-tokens`) : au-delà, le corpus est tronqué (après mélange).
 - **Empaquetage** (`--pack-len`, défaut 1024) : les conversations sont mises bout à bout pour former des séquences de ~1024 jetons, afin que le modèle apprenne aussi les positions lointaines. **Les positions au-delà de `--pack-len` ne sont jamais apprises** par défaut : le contexte de 7 024 est une *capacité*, pas une garantie de qualité sur de longs textes. Pour vraiment exploiter un long contexte, il faut des données longues et un `--pack-len` plus grand (temps et mémoire croissent environ comme la longueur au carré).
 - L'ancien modèle est sauvegardé en `modele.b8n.prev` avant d'être remplacé.
-- Réglages d'un **nouveau** modèle : `--vocab 640 --d 64 --layers 3 --heads 4 --future 2`.
+- Réglages d'un **nouveau** modèle : `--vocab 1024 --d 128 --layers 4 --heads 8 --future 2`. C'est un modèle plus grand ; utilise `--fresh --model modele_ameliore.b8n` pour le créer sans remplacer le modèle existant.
 - Autres options : `--lr`, `--steps` (remplace `--epochs`), `--batch`, `--seed`, `--no-backup`.
 
 Pendant l'entraînement : perte lissée, perte de validation (1 conversation sur 20 est mise de côté), taux d'apprentissage, norme du gradient. L'entraînement utilise tous les cœurs. L'optimiseur est AdamW avec montée linéaire puis décroissance en cosinus et écrêtage du gradient.
+
+### Adaptation LoRA
+
+`gopu.trl.lora` ajoute une adaptation faible rang sur la tête de sortie, sans modifier les poids du Transformer. L'adaptateur est enregistré séparément et ne peut être chargé que sur une architecture compatible.
+
+```python
+from gopu_lm import Model
+from gopu.trl.lora import LoRAConfig, LoRATrainer
+
+model = Model.load_model("modele_ameliore.b8n")
+trainer = LoRATrainer(model, LoRAConfig(rank=8, steps=300))
+trainer.train("mes_exemples.txt")
+trainer.save("domaine.lora.b8n")
+# Plus tard : model.load_lora("domaine.lora.b8n")
+```
+
+Le benchmark s'exécute avec `python3 tools/evaluate_lm.py modele_ameliore.b8n`. Son jeu de questions est stocké séparément dans `data/eval.jsonl`.
 
 Équivalent en ligne de commande Rust :
 ```sh

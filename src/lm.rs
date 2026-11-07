@@ -715,6 +715,84 @@ pub struct TrainReport {
     pub seconds: f32,
 }
 
+/// Adaptateur LoRA de la tete de sortie partagee. Le modele de base reste gele ;
+/// l'adaptateur ajoute `alpha / rank * h.A.B` aux logits.
+#[derive(Clone)]
+pub struct Lora {
+    pub rank: usize,
+    pub alpha: f32,
+    pub a: Tensor, // [d, rank]
+    pub b: Tensor, // [rank, vocab]
+}
+
+impl Lora {
+    fn new(cfg: &Config, rank: usize, alpha: f32, seed: u64) -> Result<Self, String> {
+        if rank == 0 {
+            return Err("le rang LoRA doit etre superieur a zero".to_string());
+        }
+        let mut rng = Rng::new(seed);
+        let mut a = Tensor::zeros(&[cfg.d, rank]);
+        for x in &mut a.data {
+            *x = rng.normal() * 0.02;
+        }
+        Ok(Lora { rank, alpha: if alpha > 0.0 { alpha } else { rank as f32 }, a, b: Tensor::zeros(&[rank, cfg.vocab]) })
+    }
+
+    fn scale(&self) -> f32 {
+        self.alpha / self.rank as f32
+    }
+
+    fn add_logits(&self, h: &[f32], logits: &mut [f32]) {
+        let mut z = vec![0.0f32; self.rank];
+        for i in 0..h.len() {
+            for k in 0..self.rank {
+                z[k] += h[i] * self.a.data[i * self.rank + k];
+            }
+        }
+        let scale = self.scale();
+        let vocab = logits.len();
+        for (v, logit) in logits.iter_mut().enumerate() {
+            for k in 0..self.rank {
+                *logit += scale * z[k] * self.b.data[k * vocab + v];
+            }
+        }
+    }
+
+    fn save(&self, cfg: &Config, path: &str) -> Result<(), String> {
+        let tensors = vec![("output_lora.A".to_string(), self.a.clone()), ("output_lora.B".to_string(), self.b.clone())];
+        let meta = vec![
+            ("arch".to_string(), "gopu-lora".to_string()),
+            ("target".to_string(), "output".to_string()),
+            ("d".to_string(), cfg.d.to_string()),
+            ("vocab".to_string(), cfg.vocab.to_string()),
+            ("rank".to_string(), self.rank.to_string()),
+            ("alpha".to_string(), self.alpha.to_string()),
+        ];
+        io::save_tensors(path, &tensors, &meta)
+    }
+
+    fn load(cfg: &Config, path: &str) -> Result<Self, String> {
+        let (tensors, meta) = io::load_tensors(path)?;
+        let find = |k: &str| meta.iter().find(|(mk, _)| mk == k).map(|(_, v)| v.clone());
+        if find("arch").as_deref() != Some("gopu-lora") || find("target").as_deref() != Some("output") {
+            return Err("ce fichier n'est pas un adaptateur LoRA de sortie gopu".to_string());
+        }
+        let number = |k: &str| -> Result<usize, String> { find(k).ok_or(format!("metadonnee LoRA '{}' absente", k))?.parse().map_err(|_| format!("metadonnee LoRA '{}' invalide", k)) };
+        if number("d")? != cfg.d || number("vocab")? != cfg.vocab {
+            return Err("cet adaptateur LoRA ne correspond pas a l'architecture du modele".to_string());
+        }
+        let rank = number("rank")?;
+        let alpha = find("alpha").ok_or("metadonnee LoRA 'alpha' absente")?.parse::<f32>().map_err(|_| "metadonnee LoRA 'alpha' invalide")?;
+        let tensor = |name: &str| -> Result<Tensor, String> { tensors.iter().find(|(n, _)| n == name).map(|(_, x)| x.clone()).ok_or(format!("tenseur LoRA '{}' absent", name)) };
+        let a = tensor("output_lora.A")?;
+        let b = tensor("output_lora.B")?;
+        if a.shape != vec![cfg.d, rank] || b.shape != vec![rank, cfg.vocab] {
+            return Err("formes LoRA incompatibles avec le modele".to_string());
+        }
+        Ok(Lora { rank, alpha, a, b })
+    }
+}
+
 fn crop<'a>(s: &'a Sample, ctx: usize, rng: &mut Rng) -> (&'a [u32], &'a [f32]) {
     let n = s.ids.len();
     if n <= ctx + 1 {
@@ -765,13 +843,14 @@ pub struct GenOut {
 pub struct Lm {
     pub params: Params,
     pub tok: Tokenizer,
+    pub lora: Option<Lora>,
 }
 
 impl Lm {
     pub fn new(mut cfg: Config, tok: Tokenizer, seed: u64) -> Result<Lm, String> {
         cfg.vocab = tok.vocab_size();
         cfg.validate()?;
-        Ok(Lm { params: Params::init(&cfg, seed), tok })
+        Ok(Lm { params: Params::init(&cfg, seed), tok, lora: None })
     }
 
     pub fn cfg(&self) -> &Config {
@@ -828,7 +907,7 @@ impl Lm {
             t.push(x.clone());
         }
         debug_assert_eq!(t.len(), cfg.n_tensors());
-        Ok(Lm { params: Params { cfg, t }, tok })
+        Ok(Lm { params: Params { cfg, t }, tok, lora: None })
     }
 
     /// Change la taille de contexte. Les positions existantes sont conservees ; les nouvelles sont initialisees
@@ -846,6 +925,21 @@ impl Lm {
         }
         self.params.t[POS] = n;
         self.params.cfg.ctx = new_ctx;
+        Ok(())
+    }
+
+    /// Active un nouvel adaptateur LoRA de rang `rank` sur la tete de sortie.
+    pub fn enable_lora(&mut self, rank: usize, alpha: f32, seed: u64) -> Result<(), String> {
+        self.lora = Some(Lora::new(self.cfg(), rank, alpha, seed)?);
+        Ok(())
+    }
+
+    pub fn save_lora(&self, path: &str) -> Result<(), String> {
+        self.lora.as_ref().ok_or("aucun adaptateur LoRA actif")?.save(self.cfg(), path)
+    }
+
+    pub fn load_lora(&mut self, path: &str) -> Result<(), String> {
+        self.lora = Some(Lora::load(self.cfg(), path)?);
         Ok(())
     }
 
@@ -951,6 +1045,107 @@ impl Lm {
         Ok(TrainReport { steps: done, loss: ema.unwrap_or(f32::NAN), val_loss: last_val, seconds: start.elapsed().as_secs_f32() })
     }
 
+    /// Entraine seulement les matrices LoRA de la tete de sortie. Les parametres du Transformer ne sont jamais modifies.
+    pub fn train_lora(&mut self, train: &[Sample], val: &[Sample], o: &TrainOpts, rank: usize, alpha: f32, log: &mut dyn FnMut(&str)) -> Result<TrainReport, String> {
+        if train.is_empty() {
+            return Err("aucun exemple d'entrainement LoRA".to_string());
+        }
+        if self.lora.is_none() {
+            self.enable_lora(rank, alpha, o.seed)?;
+        }
+        let cfg = self.cfg().clone();
+        let lora = self.lora.as_mut().unwrap();
+        if lora.rank != rank {
+            return Err(format!("rang LoRA actif {} different du rang demande {}", lora.rank, rank));
+        }
+        let (mut ma, mut va) = (Tensor::zeros(&lora.a.shape), Tensor::zeros(&lora.a.shape));
+        let (mut mb, mut vb) = (Tensor::zeros(&lora.b.shape), Tensor::zeros(&lora.b.shape));
+        let mut rng = Rng::new(o.seed);
+        let start = Instant::now();
+        let mut ema = None;
+        let mut done = 0;
+        for step in 1..=o.steps {
+            let (mut ga, mut gb) = (Tensor::zeros(&lora.a.shape), Tensor::zeros(&lora.b.shape));
+            let (mut total_loss, mut total_weight) = (0.0f32, 0.0f32);
+            for _ in 0..o.batch.max(1) {
+                let s = &train[rng.below(train.len())];
+                let (seq, weights) = crop(s, cfg.ctx, &mut rng);
+                if seq.len() < 2 { continue; }
+                let t = seq.len() - 1;
+                let fw = forward(&self.params, &seq[..t], false);
+                for r in 0..t {
+                    let wt = weights[r + 1];
+                    if wt <= 0.0 { continue; }
+                    let h = &fw.yf.data[r * cfg.d..(r + 1) * cfg.d];
+                    let mut z = vec![0.0f32; lora.rank];
+                    for i in 0..cfg.d {
+                        for k in 0..lora.rank { z[k] += h[i] * lora.a.data[i * lora.rank + k]; }
+                    }
+                    let mut logits: Vec<f32> = (0..cfg.vocab).map(|v| dot(h, &self.params.t[TOK].data[v * cfg.d..(v + 1) * cfg.d])).collect();
+                    let scale = lora.scale();
+                    for v in 0..cfg.vocab {
+                        for k in 0..lora.rank { logits[v] += scale * z[k] * lora.b.data[k * cfg.vocab + v]; }
+                    }
+                    let mx = logits.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+                    let mut sum = 0.0f32;
+                    for x in &mut logits { *x = (*x - mx).exp(); sum += *x; }
+                    let target = seq[r + 1] as usize;
+                    total_loss += wt * -(logits[target] / sum).max(1e-12).ln();
+                    total_weight += wt;
+                    let mut gz = vec![0.0f32; lora.rank];
+                    for v in 0..cfg.vocab {
+                        let dl = wt * (logits[v] / sum - if v == target { 1.0 } else { 0.0 });
+                        for k in 0..lora.rank {
+                            gb.data[k * cfg.vocab + v] += scale * z[k] * dl;
+                            gz[k] += scale * lora.b.data[k * cfg.vocab + v] * dl;
+                        }
+                    }
+                    for i in 0..cfg.d {
+                        for k in 0..lora.rank { ga.data[i * lora.rank + k] += h[i] * gz[k]; }
+                    }
+                }
+            }
+            if total_weight == 0.0 { continue; }
+            let lr = if step <= o.warmup { o.lr * step as f32 / o.warmup.max(1) as f32 } else { o.lr };
+            let inv = 1.0 / total_weight;
+            adam_tensor(&mut lora.a, &ga, &mut ma, &mut va, lr, o.wd, inv, step as i32);
+            adam_tensor(&mut lora.b, &gb, &mut mb, &mut vb, lr, 0.0, inv, step as i32);
+            let loss = total_loss * inv;
+            ema = Some(match ema { Some(x) => 0.95 * x + 0.05 * loss, None => loss });
+            done = step;
+            if o.log_every > 0 && (step == 1 || step % o.log_every == 0 || step == o.steps) {
+                log(&format!("LoRA etape {:>5}/{} | perte {:.3} (lissee {:.3}) | {:.0}s", step, o.steps, loss, ema.unwrap_or(loss), start.elapsed().as_secs_f32()));
+            }
+            if o.max_seconds > 0.0 && start.elapsed().as_secs_f32() > o.max_seconds { break; }
+        }
+        let val_loss = if val.is_empty() { None } else { Some(self.eval_lora_loss(val)) };
+        Ok(TrainReport { steps: done, loss: ema.unwrap_or(f32::NAN), val_loss, seconds: start.elapsed().as_secs_f32() })
+    }
+
+    fn eval_lora_loss(&self, samples: &[Sample]) -> f32 {
+        let lora = match &self.lora { Some(x) => x, None => return f32::NAN };
+        let cfg = self.cfg();
+        let mut rng = Rng::new(7);
+        let (mut loss, mut weight) = (0.0f32, 0.0f32);
+        for s in samples {
+            let (seq, weights) = crop(s, cfg.ctx, &mut rng);
+            if seq.len() < 2 { continue; }
+            let fw = forward(&self.params, &seq[..seq.len() - 1], false);
+            for r in 0..seq.len() - 1 {
+                let wt = weights[r + 1];
+                if wt <= 0.0 { continue; }
+                let h = &fw.yf.data[r * cfg.d..(r + 1) * cfg.d];
+                let mut logits: Vec<f32> = (0..cfg.vocab).map(|v| dot(h, &self.params.t[TOK].data[v * cfg.d..(v + 1) * cfg.d])).collect();
+                lora.add_logits(h, &mut logits);
+                let mx = logits.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+                let sum: f32 = logits.iter().map(|x| (*x - mx).exp()).sum();
+                loss += wt * -((logits[seq[r + 1] as usize] - mx).exp() / sum).max(1e-12).ln();
+                weight += wt;
+            }
+        }
+        loss / weight.max(1.0)
+    }
+
     /// Perte moyenne (jeton suivant, ponderee) sur des exemples.
     pub fn eval_loss(&self, samples: &[Sample]) -> f32 {
         let ctx = self.cfg().ctx;
@@ -983,11 +1178,20 @@ impl Lm {
     /// Logits du prochain jeton (position la plus recente de la fenetre de contexte).
     pub fn last_logits(&self, ids: &[u32]) -> Vec<f32> {
         let ids = self.window(ids);
+        // L'API publique peut recevoir directement des ids arbitraires via le FFI.
+        // Ne laissons pas une entrée vide ou hors vocabulaire provoquer un panic.
+        if ids.is_empty() || ids.iter().any(|&id| id as usize >= self.cfg().vocab) {
+            return vec![0.0; self.cfg().vocab];
+        }
         let fw = forward(&self.params, ids, false);
         let d = self.cfg().d;
         let last = &fw.yf.data[(ids.len() - 1) * d..ids.len() * d];
         let tok = &self.params.t[TOK];
-        (0..self.cfg().vocab).map(|v| dot(last, &tok.data[v * d..(v + 1) * d])).collect()
+        let mut logits: Vec<f32> = (0..self.cfg().vocab).map(|v| dot(last, &tok.data[v * d..(v + 1) * d])).collect();
+        if let Some(lora) = &self.lora {
+            lora.add_logits(last, &mut logits);
+        }
+        logits
     }
 
     /// Distribution des jetons a venir : element 0 = jeton suivant, element j+1 = jeton t+2+j (tete j).
@@ -1008,6 +1212,9 @@ impl Lm {
         }
         for h in heads {
             let mut logits: Vec<f32> = (0..c.vocab).map(|v| dot(&h.data, &tok.data[v * d..(v + 1) * d])).collect();
+            if let Some(lora) = &self.lora {
+                lora.add_logits(&h.data, &mut logits);
+            }
             logits[tokenizer::PAD as usize] = f32::NEG_INFINITY;
             outs.push(top_probs(&logits, top_n));
         }
@@ -1036,6 +1243,9 @@ impl Lm {
 
     pub fn generate(&self, prompt: &[u32], o: &GenOpts) -> GenOut {
         let mut ids: Vec<u32> = prompt.to_vec();
+        if ids.is_empty() || ids.iter().any(|&id| id as usize >= self.cfg().vocab) {
+            return GenOut { tokens: Vec::new(), finish: "invalid_prompt", stop: None };
+        }
         let mut seed = o.seed;
         if seed == 0 {
             seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(1);
@@ -1071,19 +1281,23 @@ fn top_probs(logits: &[f32], n: usize) -> Vec<(u32, f32)> {
 }
 
 fn sample(logits: &mut [f32], o: &GenOpts, rng: &mut Rng, recent: &[u32]) -> u32 {
+    if logits.is_empty() {
+        return tokenizer::PAD;
+    }
     logits[tokenizer::PAD as usize] = f32::NEG_INFINITY;
-    if (o.repetition_penalty - 1.0).abs() > 1e-6 {
+    let repetition_penalty = if o.repetition_penalty.is_finite() && o.repetition_penalty > 0.0 { o.repetition_penalty } else { 1.0 };
+    if (repetition_penalty - 1.0).abs() > 1e-6 {
         let mut seen: Vec<u32> = recent.to_vec();
         seen.sort_unstable();
         seen.dedup();
         for id in seen {
             let l = &mut logits[id as usize];
-            *l = if *l > 0.0 { *l / o.repetition_penalty } else { *l * o.repetition_penalty };
+            *l = if *l > 0.0 { *l / repetition_penalty } else { *l * repetition_penalty };
         }
     }
     let mut idx: Vec<usize> = (0..logits.len()).collect();
     idx.sort_by(|&a, &b| logits[b].partial_cmp(&logits[a]).unwrap_or(std::cmp::Ordering::Equal));
-    if o.temperature <= 1e-6 {
+    if !o.temperature.is_finite() || o.temperature <= 1e-6 {
         return idx[0] as u32;
     }
     let k = if o.top_k == 0 { idx.len() } else { o.top_k.min(idx.len()) };
@@ -1133,6 +1347,19 @@ fn adamw(p: &mut Params, g: &[Tensor], m: &mut [Tensor], v: &mut [Tensor], lr: f
             let step = (mi[k] / c1) / ((vi[k] / c2).sqrt() + eps);
             pi[k] -= lr * (step + decay * pi[k]);
         }
+    }
+}
+
+/// AdamW applique a une unique matrice LoRA.
+fn adam_tensor(p: &mut Tensor, g: &Tensor, m: &mut Tensor, v: &mut Tensor, lr: f32, wd: f32, scale: f32, t: i32) {
+    let (b1, b2, eps) = (0.9f32, 0.999f32, 1e-8f32);
+    let (c1, c2) = (1.0 - b1.powi(t), 1.0 - b2.powi(t));
+    for i in 0..p.data.len() {
+        let gi = g.data[i] * scale;
+        m.data[i] = b1 * m.data[i] + (1.0 - b1) * gi;
+        v.data[i] = b2 * v.data[i] + (1.0 - b2) * gi * gi;
+        let step = (m.data[i] / c1) / ((v.data[i] / c2).sqrt() + eps);
+        p.data[i] -= lr * (step + wd * p.data[i]);
     }
 }
 

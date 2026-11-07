@@ -1,0 +1,2 @@
+[console_scripts]
+gopu-lm = gopu_lm.cli:main

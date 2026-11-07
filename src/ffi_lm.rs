@@ -135,6 +135,67 @@ pub unsafe extern "C" fn gopu_lm_train(m: *mut Lm, corpus: *const c_char, opts_j
     })())
 }
 
+/// Entraine un adaptateur LoRA de sortie sans modifier le Transformer de base.
+/// opts_json accepte les options usuelles d'entrainement, plus `rank` et `alpha`.
+#[no_mangle]
+pub unsafe extern "C" fn gopu_lm_lora_train(m: *mut Lm, corpus: *const c_char, opts_json: *const c_char) -> *mut c_char {
+    if m.is_null() {
+        set_err("modele nul".to_string());
+        return std::ptr::null_mut();
+    }
+    let lm = &mut *m;
+    ret((|| {
+        let v = parse_opts(&cstr(opts_json))?;
+        let d = TrainOpts::default();
+        let o = TrainOpts {
+            steps: num(&v, "steps").map(|x| x as usize).unwrap_or(d.steps),
+            batch: num(&v, "batch").map(|x| x as usize).unwrap_or(d.batch),
+            lr: num(&v, "lr").map(|x| x as f32).unwrap_or(1e-3),
+            min_lr_frac: num(&v, "min_lr_frac").map(|x| x as f32).unwrap_or(d.min_lr_frac),
+            warmup: num(&v, "warmup").map(|x| x as usize).unwrap_or(d.warmup),
+            wd: num(&v, "wd").map(|x| x as f32).unwrap_or(d.wd),
+            clip: num(&v, "clip").map(|x| x as f32).unwrap_or(d.clip),
+            future_weight: 0.0,
+            seed: num(&v, "seed").map(|x| x as u64).unwrap_or(d.seed),
+            log_every: num(&v, "log_every").map(|x| x as usize).unwrap_or(d.log_every),
+            eval_every: 0,
+            threads: 1,
+            max_seconds: num(&v, "max_seconds").map(|x| x as f32).unwrap_or(d.max_seconds),
+        };
+        let dd = DataOpts::default();
+        let dopts = DataOpts {
+            user_weight: num(&v, "user_weight").map(|x| x as f32).unwrap_or(dd.user_weight),
+            holdout_every: num(&v, "holdout_every").map(|x| x as usize).unwrap_or(dd.holdout_every),
+            max_corpus_tokens: num(&v, "max_corpus_tokens").map(|x| x as usize).unwrap_or(dd.max_corpus_tokens),
+            pack_len: num(&v, "pack_len").map(|x| x as usize).unwrap_or(dd.pack_len),
+            seed: o.seed,
+        };
+        let (tr, va, _) = prepare_data(&lm.tok, &cstr(corpus), &dopts);
+        let rank = num(&v, "rank").map(|x| x as usize).unwrap_or(8);
+        let alpha = num(&v, "alpha").map(|x| x as f32).unwrap_or(rank as f32);
+        let rep = lm.train_lora(&tr, &va, &o, rank, alpha, &mut |s| eprintln!("{}", s))?;
+        Ok(json::to_string(&Value::Obj(vec![
+            ("steps".into(), Value::Num(rep.steps as f64)),
+            ("loss".into(), Value::Num(rep.loss as f64)),
+            ("val_loss".into(), rep.val_loss.map(|x| Value::Num(x as f64)).unwrap_or(Value::Null)),
+            ("seconds".into(), Value::Num(rep.seconds as f64)),
+            ("rank".into(), Value::Num(rank as f64)),
+        ])))
+    })())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn gopu_lm_lora_save(m: *const Lm, path: *const c_char) -> i32 {
+    if m.is_null() { set_err("modele nul".to_string()); return -1; }
+    match (*m).save_lora(&cstr(path)) { Ok(()) => 0, Err(e) => { set_err(e); -1 } }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn gopu_lm_lora_load(m: *mut Lm, path: *const c_char) -> i32 {
+    if m.is_null() { set_err("modele nul".to_string()); return -1; }
+    match (*m).load_lora(&cstr(path)) { Ok(()) => 0, Err(e) => { set_err(e); -1 } }
+}
+
 /// Genere la suite d'un prompt deja formate. Retourne {"text","finish","stop","n_tokens"}.
 #[no_mangle]
 pub unsafe extern "C" fn gopu_lm_generate(m: *const Lm, prompt: *const c_char, opts_json: *const c_char) -> *mut c_char {
@@ -247,5 +308,6 @@ pub unsafe extern "C" fn gopu_lm_info(m: *const Lm) -> *mut c_char {
     }
     let c = (*m).cfg();
     let f = |k: &str, v: usize| (k.to_string(), Value::Num(v as f64));
-    to_c(json::to_string(&Value::Obj(vec![f("vocab", c.vocab), f("d", c.d), f("layers", c.layers), f("heads", c.heads), f("ctx", c.ctx), f("ff", c.ff), f("future", c.future), f("n_params", c.n_params())])))
+    let lora_rank = (*m).lora.as_ref().map(|x| x.rank).unwrap_or(0);
+    to_c(json::to_string(&Value::Obj(vec![f("vocab", c.vocab), f("d", c.d), f("layers", c.layers), f("heads", c.heads), f("ctx", c.ctx), f("ff", c.ff), f("future", c.future), f("n_params", c.n_params()), f("lora_rank", lora_rank)])))
 }

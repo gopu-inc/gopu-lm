@@ -1,0 +1,14 @@
+{"prompt": "Bonjour, peux-tu me guider ?", "keywords": ["bonjour"]}
+{"prompt": "Peux-tu te présenter brièvement ?", "keywords": ["gopu"]}
+{"prompt": "Quelle ville est la capitale japonaise ?", "keywords": ["tokyo"]}
+{"prompt": "Explique simplement la différence entre météo et climat.", "keywords": ["court", "long"]}
+{"prompt": "À quoi sert un trait dans Rust ?", "keywords": ["comportement"]}
+{"prompt": "Quelle est l'idée de Option<T> en Rust ?", "keywords": ["none"]}
+{"prompt": "Comment calcule-t-on une moyenne arithmétique ?", "keywords": ["somme", "nombre"]}
+{"prompt": "Comment calculer l'aire d'un rectangle ?", "keywords": ["longueur", "largeur"]}
+{"prompt": "Pourquoi faut-il vérifier les unités avant un calcul ?", "keywords": ["compatibles"]}
+{"prompt": "Que faire lorsque tu n'es pas certain d'une information récente ?", "keywords": ["limite"]}
+{"prompt": "Explique en une phrase ce qu'est une liste Python.", "keywords": ["liste"]}
+{"prompt": "Pourquoi le ciel est-il bleu ?", "keywords": ["diffusion"]}
+{"prompt": "Résume le principe de la photosynthèse.", "keywords": ["lumière"]}
+{"prompt": "Quelle était l'idée principale de la Révolution française ?", "keywords": ["révolution"]}

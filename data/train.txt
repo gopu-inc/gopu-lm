@@ -129580,3 +129580,824 @@ Je réponds avec une explication concise et signale les limites utiles.
 Évite de partager des informations personnelles sensibles dans un service si ce n'est pas nécessaire. Vérifie les paramètres et la politique de confidentialité du service utilisé.
 </|assistant|>
 <|eos|>
+
+<|user|>
+Explique les références en Rust.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+L'emprunt permet d'utiliser une référence vers une valeur sans en prendre la propriété. Les règles de Rust limitent les références mutables simultanées.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment représenter une erreur en Rust ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+`Result<T, E>` représente soit une réussite contenant une valeur de type T, soit une erreur de type E. Il permet de traiter explicitement les erreurs.
+</|assistant|>
+<|eos|>
+<|user|>
+Que représente Option en Rust ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+`Option<T>` représente une valeur éventuellement absente : `Some(valeur)` ou `None`. Cela évite d'utiliser un pointeur nul pour exprimer l'absence.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce qu'un Vec en Rust ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+`Vec<T>` est un tableau dynamique qui stocke des valeurs de type T dans un ordre donné. Sa taille peut évoluer pendant l'exécution.
+</|assistant|>
+<|eos|>
+<|user|>
+Explique &[T] simplement.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une slice est une vue empruntée sur une séquence, par exemple une partie d'un tableau ou d'un vecteur. Elle ne possède pas les éléments.
+</|assistant|>
+<|eos|>
+<|user|>
+Explique les traits Rust.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un trait décrit un ensemble de comportements qu'un type peut implémenter. Il permet de partager des interfaces entre plusieurs types.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce qu'une enum en Rust ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une énumération Rust définit plusieurs variantes possibles d'une même valeur. Chaque variante peut aussi contenir des données.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi sert Cargo ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Cargo est l'outil de Rust qui gère notamment les projets, la compilation, les tests et les dépendances.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment s'appelle l'outil de projet Rust ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Cargo est l'outil de Rust qui gère notamment les projets, la compilation, les tests et les dépendances.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce qu'une liste Python ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+En Python, une liste (`list`) est une séquence ordonnée et modifiable. Elle peut contenir plusieurs valeurs.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi sert un dictionnaire Python ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un dictionnaire Python associe des clés à des valeurs. On récupère une valeur à partir de sa clé.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce qu'un tuple Python ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un tuple est une séquence ordonnée généralement utilisée comme valeur immuable. Il s'écrit souvent avec des parenthèses.
+</|assistant|>
+<|eos|>
+<|user|>
+Montre la structure d'une fonction Python.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+On définit une fonction Python avec `def`, un nom, des paramètres éventuels et un bloc indenté. `return` peut renvoyer un résultat.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment gérer une erreur en Python ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une exception signale une situation exceptionnelle pendant l'exécution. `try` et `except` permettent de traiter certaines exceptions.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi servent try et except ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une exception signale une situation exceptionnelle pendant l'exécution. `try` et `except` permettent de traiter certaines exceptions.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi sert import ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un module Python est un fichier contenant du code réutilisable. On peut importer ses éléments avec `import`.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelles données peut contenir JSON ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+JSON est un format textuel courant pour représenter des données structurées avec des objets, des tableaux, des chaînes, des nombres, des booléens et null.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi sert le format CSV ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+CSV est un format texte tabulaire où les lignes représentent généralement des enregistrements et les champs sont séparés par un délimiteur, souvent une virgule.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce qu'un commit Git ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un commit Git enregistre un état du projet dans l'historique, avec un identifiant et un message descriptif.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce qu'une API ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une API définit une manière pour des logiciels d'échanger des données ou de demander des opérations selon une interface convenue.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce qu'une base de données ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une base de données organise des informations afin qu'un logiciel puisse les consulter et les modifier. Le choix du système dépend du besoin.
+</|assistant|>
+<|eos|>
+<|user|>
+Pourquoi une application utilise-t-elle une base de données ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une base de données organise des informations afin qu'un logiciel puisse les consulter et les modifier. Le choix du système dépend du besoin.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce que le chiffrement ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Le chiffrement transforme des données à l'aide d'une clé pour que leur contenu ne soit pas lisible sans le mécanisme de déchiffrement approprié.
+</|assistant|>
+<|eos|>
+<|user|>
+Pourquoi ne pas réutiliser le même mot de passe ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un bon mot de passe est long, unique et difficile à deviner. Un gestionnaire de mots de passe aide à en créer et mémoriser un différent pour chaque service.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment savoir si ma sauvegarde fonctionne ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une sauvegarde est une copie séparée de données que l'on peut utiliser après une perte ou une panne. Il faut vérifier régulièrement qu'elle peut être restaurée.
+</|assistant|>
+<|eos|>
+<|user|>
+Le processeur fait quoi dans un ordinateur ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Le processeur exécute les instructions d'un programme. Sa vitesse n'est qu'un facteur parmi d'autres dans les performances d'un ordinateur.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi sert la mémoire vive ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La mémoire vive conserve temporairement les données utilisées par les programmes en cours. Son contenu est généralement perdu lorsque l'ordinateur s'éteint.
+</|assistant|>
+<|eos|>
+<|user|>
+Explique ce qu'est Internet.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Internet est un réseau mondial de réseaux interconnectés. Le Web est un service qui fonctionne au-dessus d'Internet, avec d'autres services comme le courrier électronique.
+</|assistant|>
+<|eos|>
+<|user|>
+Explique le machine learning simplement.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+L'apprentissage automatique consiste à ajuster un modèle à partir d'exemples afin qu'il repère des régularités et produise des prédictions ou des sorties.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce que la validation d'un modèle ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un jeu de validation sert à suivre les performances d'un modèle sur des exemples mis de côté pendant son entraînement.
+</|assistant|>
+<|eos|>
+<|user|>
+Pourquoi cherche-t-on à réduire la perte ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La perte mesure l'écart entre une prédiction et la cible selon une fonction choisie. L'entraînement cherche généralement à la réduire.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi sert l'attention dans un Transformer ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un Transformer est une architecture de réseau neuronal qui utilise notamment des mécanismes d'attention pour traiter les relations entre éléments d'une séquence.
+</|assistant|>
+<|eos|>
+<|user|>
+Que fait le mécanisme d'attention ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Le mécanisme d'attention calcule quelles parties d'une séquence sont utiles pour traiter une position donnée. Il ne garantit pas à lui seul une réponse correcte.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelles sont les unités SI de longueur, masse et temps ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Dans le système international, la longueur se mesure en mètres, la masse en kilogrammes et le temps en secondes.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle unité utilise-t-on pour mesurer une longueur ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Dans le système international, la longueur se mesure en mètres, la masse en kilogrammes et le temps en secondes.
+</|assistant|>
+<|eos|>
+<|user|>
+Quel est le point d'ébullition de l'eau au niveau de la mer ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+À la pression atmosphérique normale, l'eau pure gèle près de 0 °C et bout près de 100 °C. Ces valeurs changent avec la pression et les conditions.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment les plantes utilisent-elles la lumière ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La photosynthèse permet à certaines plantes, algues et bactéries d'utiliser l'énergie lumineuse pour fabriquer des molécules organiques à partir notamment de dioxyde de carbone et d'eau.
+</|assistant|>
+<|eos|>
+<|user|>
+Pourquoi parle-t-on de jour et d'année ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La Terre tourne sur elle-même et orbite autour du Soleil. Une rotation complète dure environ un jour et une révolution environ une année.
+</|assistant|>
+<|eos|>
+<|user|>
+La Lune produit-elle sa propre lumière visible ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La Lune est le satellite naturel de la Terre. Elle réfléchit la lumière du Soleil et présente différentes phases au fil de son orbite.
+</|assistant|>
+<|eos|>
+<|user|>
+Pourquoi la Lune a-t-elle des phases ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La Lune est le satellite naturel de la Terre. Elle réfléchit la lumière du Soleil et présente différentes phases au fil de son orbite.
+</|assistant|>
+<|eos|>
+<|user|>
+Quel rôle jouent les feuilles ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Les racines ancrent souvent la plante et absorbent l'eau et des éléments minéraux. Les feuilles captent la lumière et participent souvent à la photosynthèse.
+</|assistant|>
+<|eos|>
+<|user|>
+Dans quelle ville se trouve la capitale française ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale de la France est Paris.
+</|assistant|>
+<|eos|>
+<|user|>
+Paris est-elle la capitale de la France ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale de la France est Paris.
+</|assistant|>
+<|eos|>
+<|user|>
+Dakar est la capitale de quel pays ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Sénégal est Dakar.
+</|assistant|>
+<|eos|>
+<|user|>
+Tokyo est la capitale de quel pays ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Japon est Tokyo.
+</|assistant|>
+<|eos|>
+<|user|>
+Ottawa est la capitale de quel pays ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Canada est Ottawa.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment s'appelle la capitale kenyane ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Kenya est Nairobi.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment s'appelle la capitale brésilienne ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Brésil est Brasília.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle est la capitale de la République démocratique du Congo ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale de la République démocratique du Congo est Kinshasa.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle est la capitale de la Belgique ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale de la Belgique est Bruxelles.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment s'appelle la capitale italienne ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale de l'Italie est Rome.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle est la capitale du Rwanda ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Rwanda est Kigali.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle est la capitale de l'Égypte ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale de l'Égypte est Le Caire.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle est la capitale du Portugal ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Portugal est Lisbonne.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment s'appelle la capitale portugaise ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La capitale du Portugal est Lisbonne.
+</|assistant|>
+<|eos|>
+<|user|>
+À quoi sert un verbe ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un verbe exprime souvent une action ou un état. Il se conjugue selon des éléments comme la personne, le nombre, le temps et le mode.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment s'accorde généralement un adjectif ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un adjectif apporte une précision sur un nom et s'accorde généralement avec lui en genre et en nombre.
+</|assistant|>
+<|eos|>
+<|user|>
+Explique le mot synonyme.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Des synonymes ont des sens proches, mais ils ne sont pas toujours interchangeables dans tous les contextes.
+</|assistant|>
+<|eos|>
+<|user|>
+Que faut-il garder dans un résumé ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Pour résumer, repère l'idée principale, garde les informations essentielles et reformule-les brièvement avec tes propres mots.
+</|assistant|>
+<|eos|>
+<|user|>
+Que faut-il préserver en traduisant ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Pour traduire, il faut transmettre le sens et le ton dans la langue cible. Une traduction mot à mot peut produire une phrase incorrecte.
+</|assistant|>
+<|eos|>
+<|user|>
+Que faire si une question est ambiguë ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Quand une demande est ambiguë, pose une question courte sur le détail manquant avant de supposer ce que la personne veut.
+</|assistant|>
+<|eos|>
+<|user|>
+Combien de centimètres y a-t-il dans un mètre ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Avant de comparer ou d'additionner des mesures, convertis-les dans des unités compatibles. Par exemple, 1 mètre vaut 100 centimètres.
+</|assistant|>
+<|eos|>
+<|user|>
+Que signifie un pourcentage ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Un pourcentage exprime une proportion sur cent. Pour calculer p % d'une quantité x, on calcule x multiplié par p puis divisé par 100.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment calculer une moyenne arithmétique ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+La moyenne arithmétique d'une liste de nombres est leur somme divisée par le nombre de valeurs.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle est la formule de l'aire d'un rectangle ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+L'aire d'un rectangle se calcule en multipliant sa longueur par sa largeur, à condition d'exprimer les deux mesures dans la même unité.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle unité obtient-on pour une aire ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+L'aire d'un rectangle se calcule en multipliant sa longueur par sa largeur, à condition d'exprimer les deux mesures dans la même unité.
+</|assistant|>
+<|eos|>
+<|user|>
+Qu'est-ce que le périmètre ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Le périmètre est la longueur totale du contour d'une figure. Pour un rectangle, il vaut deux fois la somme de la longueur et de la largeur.
+</|assistant|>
+<|eos|>
+<|user|>
+Combien de secondes dans une minute ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Une heure contient 60 minutes et une minute contient 60 secondes.
+</|assistant|>
+<|eos|>
+<|user|>
+Quelle différence entre l'échelle Celsius et kelvin ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Pour convertir des degrés Celsius en kelvins, on ajoute 273,15. Une différence de température de 1 °C correspond à une différence de 1 K.
+</|assistant|>
+<|eos|>
+<|user|>
+Pourquoi trier les déchets ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Le tri permet d'orienter certains matériaux vers des filières de recyclage. Les consignes varient selon la commune et le type de déchet.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment réduire sa consommation d'eau ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Pour économiser l'eau, on peut réparer les fuites, fermer le robinet pendant le brossage des dents et choisir des usages adaptés à ses besoins.
+</|assistant|>
+<|eos|>
+<|user|>
+Donne des gestes simples pour économiser l'eau.
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Pour économiser l'eau, on peut réparer les fuites, fermer le robinet pendant le brossage des dents et choisir des usages adaptés à ses besoins.
+</|assistant|>
+<|eos|>
+<|user|>
+Où demander de l'aide pour des premiers secours ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+En cas d'urgence médicale, contacte les services d'urgence locaux. Pour un geste de premiers secours, suis une formation reconnue et les consignes des professionnels.
+</|assistant|>
+<|eos|>
+<|user|>
+Peux-tu remplacer une formation de secourisme ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+En cas d'urgence médicale, contacte les services d'urgence locaux. Pour un geste de premiers secours, suis une formation reconnue et les consignes des professionnels.
+</|assistant|>
+<|eos|>
+<|user|>
+Tes réponses remplacent-elles un médecin ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Je peux donner des informations générales, mais je ne peux pas diagnostiquer une personne. Pour un symptôme inquiétant, demande conseil à un professionnel de santé.
+</|assistant|>
+<|eos|>
+<|user|>
+Peux-tu donner une réponse juridique certaine ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Je peux expliquer des notions générales, mais les règles dépendent du pays et de la situation. Pour une décision juridique, consulte une source officielle ou un professionnel qualifié.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment évaluer un conseil financier ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Je peux expliquer des concepts financiers généraux, mais un choix dépend de ta situation, de tes objectifs et des risques. Vérifie les informations auprès de sources fiables.
+</|assistant|>
+<|eos|>
+<|user|>
+Dois-je partager mon adresse ou mes mots de passe ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Évite de partager des informations personnelles sensibles dans un service si ce n'est pas nécessaire. Vérifie les paramètres et la politique de confidentialité du service utilisé.
+</|assistant|>
+<|eos|>
+<|user|>
+Puis-je réutiliser n'importe quelle image trouvée en ligne ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Le droit d'auteur et les exceptions applicables varient selon les pays et les usages. Pour réutiliser une œuvre, vérifie sa licence et les règles locales.
+</|assistant|>
+<|eos|>
+<|user|>
+Comment obtenir une réponse sur une information récente ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Je ne peux pas confirmer une information en temps réel sans source ou outil à jour. Donne-moi un lien ou un extrait et je peux aider à l'analyser.
+</|assistant|>
+<|eos|>
+<|user|>
+Qui es-tu ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Je suis gopu-lm, un petit modèle de langage écrit en Rust. Je ne peux pas confirmer l'identité personnelle de son créateur à partir des seules informations présentes dans cette conversation.
+</|assistant|>
+<|eos|>
+<|user|>
+Quel est ton nom et que peux-tu confirmer sur ton origine ?
+</|user|>
+<|thinking|>
+Je réponds avec une explication concise et signale les limites utiles.
+</|thinking|>
+<|assistant|>
+Je suis gopu-lm, un petit modèle de langage écrit en Rust. Je ne peux pas confirmer l'identité personnelle de son créateur à partir des seules informations présentes dans cette conversation.
+</|assistant|>
+<|eos|>

@@ -127,9 +127,14 @@ Le benchmark s'exécute avec `python3 tools/evaluate_lm.py modele_ameliore.b8n`.
 ```python
 M = Model.load_model("modele.b8n")        # .b8n ou .safetensors
 M.save_model("copie.b8n")
+M.save_model("mon-modele")                # dossier Hugging Face : config, tokenizer, template et poids shards
 M = Model.new(corpus_texte, vocab=640, d=64, layers=3, heads=4, ctx=7024, future=2)   # nouveau modèle
 M.train(corpus_texte_ou_chemin, steps=500, batch=8, lr=2e-3, pack_len=1024, max_corpus_tokens=1_000_000)
 ```
+Un chemin sans extension (ou un dossier existant) exporte un dépôt Hugging Face contenant `config.json`,
+`tokenizer.json`, `vocab.txt`, `chat_template.jinja` et le code d'architecture `gopu_lm`. Les poids
+sont écrits en safetensors, découpés si nécessaire en fichiers de moins de 25 000 000 octets.
+Pour charger l'architecture personnalisée avec Transformers, utilise `trust_remote_code=True`.
 
 ### `askInto`
 

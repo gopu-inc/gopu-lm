@@ -16,6 +16,251 @@ import tempfile
 
 __all__ = ["Model", "Reply", "default_tools"]
 
+_HF_MAX_FILE_SIZE = 25_000_000
+_SPECIAL_TOKENS = [
+    "<|pad|>", "<|eos|>", "<|system|>", "</|system|>", "<|user|>", "</|user|>",
+    "<|thinking|>", "</|thinking|>", "<|assistant|>", "</|assistant|>",
+    '<|tools="', "</|tools>", "<|tool_result>", "</|tool_result>",
+]
+
+_BYTE_VISIBLE = list(range(ord("!"), ord("~") + 1))
+_BYTE_VISIBLE += list(range(ord("¡"), ord("¬") + 1))
+_BYTE_VISIBLE += list(range(ord("®"), ord("ÿ") + 1))
+_BYTE_CHARS = _BYTE_VISIBLE[:]
+_byte_extra = 0
+for _byte in range(256):
+    if _byte not in _BYTE_VISIBLE:
+        _BYTE_VISIBLE.append(_byte)
+        _BYTE_CHARS.append(256 + _byte_extra)
+        _byte_extra += 1
+_BYTE_TO_CHAR = dict(zip(_BYTE_VISIBLE, _BYTE_CHARS))
+
+
+def _read_safetensors(path):
+    with open(path, "rb") as f:
+        prefix = f.read(8)
+        if len(prefix) != 8:
+            raise ValueError("fichier safetensors invalide")
+        header_len = int.from_bytes(prefix, "little")
+        header_bytes = f.read(header_len)
+        if len(header_bytes) != header_len:
+            raise ValueError("en-tete safetensors tronque")
+        header = json.loads(header_bytes)
+        data_offset = 8 + header_len
+        f.seek(0, os.SEEK_END)
+        file_size = f.tell()
+        if data_offset > file_size:
+            raise ValueError("en-tete safetensors hors limites")
+        tensors = {}
+        for name, descriptor in header.items():
+            if name == "__metadata__":
+                continue
+            start, end = descriptor["data_offsets"]
+            if start < 0 or end < start or data_offset + end > file_size:
+                raise ValueError("offsets safetensors invalides pour %s" % name)
+            f.seek(data_offset + start)
+            tensors[name] = (descriptor["dtype"], descriptor["shape"], f.read(end - start))
+            if len(tensors[name][2]) != end - start:
+                raise ValueError("tenseur safetensors tronque: %s" % name)
+    return header.get("__metadata__", {}), tensors
+
+
+def _encode_byte(token_bytes):
+    return "".join(chr(_BYTE_TO_CHAR[byte]) for byte in token_bytes)
+
+
+def _tokenizer_assets(metadata, vocab_size):
+    merges = []
+    merge_text = metadata.get("tok_merges", "")
+    if merge_text:
+        try:
+            merge_ids = [tuple(int(x) for x in pair.split(",")) for pair in merge_text.split(";") if pair]
+        except (TypeError, ValueError) as e:
+            raise ValueError("fusions BPE invalides dans le modele") from e
+    else:
+        merge_ids = []
+    byte_tokens = [bytes([i]) for i in range(256)]
+    byte_tokens.extend(token.encode("utf-8") for token in _SPECIAL_TOKENS)
+    for left, right in merge_ids:
+        if left < 0 or right < 0 or left >= len(byte_tokens) or right >= len(byte_tokens):
+            raise ValueError("fusion BPE hors limites dans le modele")
+        byte_tokens.append(byte_tokens[left] + byte_tokens[right])
+    if len(byte_tokens) != vocab_size:
+        raise ValueError("vocabulaire tokenizer incompatible avec les poids")
+
+    vocab = {_encode_byte(token): i for i, token in enumerate(byte_tokens[:256])}
+    for i, token in enumerate(_SPECIAL_TOKENS, start=256):
+        vocab[token] = i
+    for i, (left, right) in enumerate(merge_ids, start=270):
+        vocab[_encode_byte(byte_tokens[i])] = i
+        merges.append("%s %s" % (_encode_byte(byte_tokens[left]), _encode_byte(byte_tokens[right])))
+    if len(vocab) != vocab_size:
+        raise ValueError("le vocabulaire contient des tokens identiques non exportables")
+
+    added_tokens = [
+        {"id": i + 256, "content": token, "single_word": False, "lstrip": False,
+         "rstrip": False, "normalized": False, "special": True}
+        for i, token in enumerate(_SPECIAL_TOKENS)
+    ]
+    tokenizer = {
+        "version": "1.0",
+        "truncation": None,
+        "padding": None,
+        "added_tokens": added_tokens,
+        "normalizer": None,
+        "pre_tokenizer": {"type": "ByteLevel", "add_prefix_space": False, "trim_offsets": True, "use_regex": False},
+        "post_processor": None,
+        "decoder": {"type": "ByteLevel", "add_prefix_space": True, "trim_offsets": True, "use_regex": False},
+        "model": {"type": "BPE", "dropout": None, "unk_token": None, "continuing_subword_prefix": None,
+                  "end_of_word_suffix": None, "vocab": vocab, "merges": merges},
+    }
+    return tokenizer, byte_tokens
+
+
+def _safetensors_header(metadata, tensors):
+    entries = {"__metadata__": metadata}
+    data_size = 0
+    for name, (dtype, shape, raw) in tensors.items():
+        start = data_size
+        data_size += len(raw)
+        entries[name] = {"dtype": dtype, "shape": shape, "data_offsets": [start, data_size]}
+    header = json.dumps(entries, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    header += b" " * ((-len(header)) % 8)
+    return header, data_size
+
+
+def _safetensors_size(metadata, tensors):
+    header, data_size = _safetensors_header(metadata, tensors)
+    return 8 + len(header) + data_size
+
+
+def _write_safetensors(path, metadata, tensors):
+    header, _ = _safetensors_header(metadata, tensors)
+    with open(path, "wb") as f:
+        f.write(len(header).to_bytes(8, "little"))
+        f.write(header)
+        for _, _, raw in tensors.values():
+            f.write(raw)
+    return 8 + len(header) + sum(len(raw) for _, _, raw in tensors.values())
+
+
+def _write_hf_weights(directory, metadata, tensors):
+    shards = []
+    current = {}
+    for name, tensor in tensors.items():
+        candidate = dict(current)
+        candidate[name] = tensor
+        if _safetensors_size(metadata, candidate) <= _HF_MAX_FILE_SIZE:
+            current = candidate
+            continue
+        if not current:
+            raise ValueError("le tenseur %s depasse la limite Hugging Face de 25 000 000 octets" % name)
+        shards.append(current)
+        current = {name: tensor}
+        if _safetensors_size(metadata, current) > _HF_MAX_FILE_SIZE:
+            raise ValueError("le tenseur %s depasse la limite Hugging Face de 25 000 000 octets" % name)
+    if current:
+        shards.append(current)
+
+    weight_map = {}
+    if len(shards) == 1:
+        index_path = os.path.join(directory, "model.safetensors.index.json")
+        if os.path.exists(index_path):
+            os.remove(index_path)
+        _write_safetensors(os.path.join(directory, "model.safetensors"), metadata, shards[0])
+        weight_map = {name: "model.safetensors" for name in shards[0]}
+    else:
+        single_path = os.path.join(directory, "model.safetensors")
+        if os.path.exists(single_path):
+            os.remove(single_path)
+        total = len(shards)
+        for i, shard in enumerate(shards, start=1):
+            filename = "model-%05d-of-%05d.safetensors" % (i, total)
+            _write_safetensors(os.path.join(directory, filename), metadata, shard)
+            weight_map.update((name, filename) for name in shard)
+        index = {"metadata": {"total_size": sum(len(raw) for _, _, raw in tensors.values())},
+                 "weight_map": weight_map}
+        with open(os.path.join(directory, "model.safetensors.index.json"), "w", encoding="utf-8") as f:
+            json.dump(index, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+
+
+def _export_hf_directory(model, directory):
+    os.makedirs(directory, exist_ok=True)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        raw_path = os.path.join(temp_dir, "model.safetensors")
+        if model._L.gopu_lm_save(model._h, _b(raw_path)) != 0:
+            _take(None)
+        metadata, tensors = _read_safetensors(raw_path)
+
+    required = ("vocab", "d", "layers", "heads", "ctx", "ff", "future")
+    try:
+        cfg = {key: int(metadata[key]) for key in required}
+    except (KeyError, ValueError) as e:
+        raise ValueError("configuration du modele incomplete pour l'export Hugging Face") from e
+    tokenizer, byte_tokens = _tokenizer_assets(metadata, cfg["vocab"])
+    _write_hf_weights(directory, metadata, tensors)
+
+    chat_template = (
+        "{% for message in messages %}"
+        "{% if message['role'] == 'system' %}<|system|>\n{{ message['content'] }}\n</|system|>\n"
+        "{% elif message['role'] == 'user' %}<|user|>\n{{ message['content'] }}\n</|user|>\n"
+        "{% elif message['role'] == 'assistant' %}<|assistant|>\n{{ message['content'] }}\n</|assistant|>\n"
+        "{% endif %}{% endfor %}"
+        "{% if add_generation_prompt %}<|assistant|>\n{% endif %}\n"
+    )
+    config = {
+        "architectures": ["GopuForCausalLM"],
+        "model_type": "gopu_lm",
+        "vocab_size": cfg["vocab"],
+        "hidden_size": cfg["d"],
+        "num_hidden_layers": cfg["layers"],
+        "num_attention_heads": cfg["heads"],
+        "max_position_embeddings": cfg["ctx"],
+        "intermediate_size": cfg["ff"],
+        "future_heads": cfg["future"],
+        "pad_token_id": 256,
+        "eos_token_id": 257,
+        "tie_word_embeddings": True,
+        "use_cache": False,
+        "auto_map": {
+            "AutoConfig": "configuration_gopu.GopuConfig",
+            "AutoModel": "modeling_gopu.GopuForCausalLM",
+            "AutoModelForCausalLM": "modeling_gopu.GopuForCausalLM",
+        },
+    }
+    files = {
+        "config.json": json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+        "tokenizer.json": json.dumps(tokenizer, ensure_ascii=False, separators=(",", ":")) + "\n",
+        "tokenizer_config.json": json.dumps({
+            "tokenizer_class": "PreTrainedTokenizerFast",
+            "model_max_length": cfg["ctx"],
+            "pad_token": _SPECIAL_TOKENS[0],
+            "eos_token": _SPECIAL_TOKENS[1],
+            "additional_special_tokens": _SPECIAL_TOKENS[2:],
+            "chat_template": chat_template,
+        }, ensure_ascii=False, indent=2) + "\n",
+        "special_tokens_map.json": json.dumps({
+            "pad_token": _SPECIAL_TOKENS[0],
+            "eos_token": _SPECIAL_TOKENS[1],
+            "additional_special_tokens": _SPECIAL_TOKENS[2:],
+        }, ensure_ascii=False, indent=2) + "\n",
+        "chat_template.jinja": chat_template,
+    }
+    for name, content in files.items():
+        with open(os.path.join(directory, name), "w", encoding="utf-8") as f:
+            f.write(content)
+    with open(os.path.join(directory, "vocab.txt"), "w", encoding="utf-8") as f:
+        for token_id, token in enumerate(byte_tokens):
+            display = _SPECIAL_TOKENS[token_id - 256] if 256 <= token_id < 270 else _encode_byte(token)
+            f.write(display + "\n")
+
+    package_dir = os.path.dirname(os.path.abspath(__file__))
+    for name in ("configuration_gopu.py", "modeling_gopu.py"):
+        with open(os.path.join(package_dir, name), encoding="utf-8") as src:
+            with open(os.path.join(directory, name), "w", encoding="utf-8") as dst:
+                dst.write(src.read())
+
 
 # ------------------------------------------------------------------ bibliotheque native
 
@@ -204,8 +449,14 @@ class Model:
         return cls(h)
 
     def save_model(self, path):
-        if self._L.gopu_lm_save(self._h, _b(os.fspath(path))) != 0:
+        path = os.fsdecode(os.fspath(path))
+        if os.path.isdir(path) or os.path.splitext(path)[1].lower() not in (".b8n", ".safetensors"):
+            _export_hf_directory(self, path)
+            return
+        if self._L.gopu_lm_save(self._h, _b(path)) != 0:
             _take(None)
+
+    save_pretrained = save_model
 
     def __del__(self):
         try:

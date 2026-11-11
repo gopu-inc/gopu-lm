@@ -42,7 +42,7 @@ def think(q, i):
     h = int(hashlib.md5((q[:80] + str(i)).encode()).hexdigest(), 16)
     return opts[h % len(opts)]
 
-def convert(conv, max_chars, i):
+def convert(conv, max_chars, i, thinking="template"):
     c = conv.strip()
     if not c.startswith("<|user|>") or c.count("<|user|>") != 1 or OPEN not in c:
         return None
@@ -56,6 +56,8 @@ def convert(conv, max_chars, i):
     a = c[a_start + len(OPEN):].replace(CLOSE, "").strip()
     if len(q) < 2 or len(a) < 2:
         return None
+    if thinking == "none":
+        return "<|user|>\n%s\n</|user|>\n<|assistant|>\n%s\n</|assistant|>\n<|eos|>\n" % (q, a)
     return "<|user|>\n%s\n</|user|>\n<|thinking|>\n%s\n</|thinking|>\n<|assistant|>\n%s\n</|assistant|>\n<|eos|>\n" % (q, think(q, i), a)
 
 def main():
@@ -64,10 +66,12 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-chars", type=int, default=1800)
     ap.add_argument("--max-convs", type=int, default=0)
+    ap.add_argument("--thinking", choices=["template", "none"], default="template",
+                    help="template : ajoute un court bloc <|thinking|> ; none : garde seulement user/assistant")
     ap.add_argument("--seed", type=int, default=1)
     a = ap.parse_args()
     raw = open(a.src, encoding="utf-8").read().split("<|eos|>")
-    out = [x for x in (convert(c, a.max_chars, i) for i, c in enumerate(raw)) if x]
+    out = [x for x in (convert(c, a.max_chars, i, a.thinking) for i, c in enumerate(raw)) if x]
     random.Random(a.seed).shuffle(out)
     if a.max_convs:
         out = out[:a.max_convs]
@@ -76,3 +80,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,0 +1,9 @@
+S	ma-session	6	8
+N	1	fact	1	5	1.2	0	gopu.inc est ecrit en Rust.
+N	2	task	2	5	1.2	0	a : Rust
+N	3	task	3	5	1.2	0	b : 
+N	4	fact	6	6	1	0	a : [task#2] a : Rust\n[fact#1] gopu.inc est ecrit en Rust.\n[task#3] b : \n
+N	5	fact	8	8	1	0	b : [TASK#2] A : RUST\n[FACT#1] GOPU.INC EST ECRIT EN RUST.\n[TASK#3] B : \n
+E	3	2	depends_on	1
+E	4	2	produced_by	1
+E	5	3	produced_by	1

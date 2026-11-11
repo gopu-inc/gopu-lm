@@ -1,0 +1,3 @@
+[console_scripts]
+airtel = gopu_lm.airtel:main
+gopu-lm = gopu_lm.cli:main

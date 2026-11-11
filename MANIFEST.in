@@ -1,0 +1,5 @@
+include README.md Cargo.toml Cargo.lock build.sh modele.b8n modele_xor.b8n
+recursive-include src *.rs
+recursive-include python *.py *.so *.dylib *.dll *.b8n
+recursive-include data *.txt
+recursive-include tools *.py
